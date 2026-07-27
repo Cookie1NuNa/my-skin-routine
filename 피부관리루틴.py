@@ -60,7 +60,7 @@ if st.session_state.menu_select == "💖 데일리 루틴":
 
         col1, col2 = st.columns(2)
         with col1:
-            show_routine_box("☀️아침", "수분 방어 & 순한 탄력", [
+            show_routine_box("아침", "수분 방어 & 순한 탄력", [
                 "더랩 토너 (수분 여러 번 촵촵 💧)",
                 "매트릭실 (탄력 베이스 - 절대 문지르지 말고 톡톡 두드려 흡수! ✋)",
                 "+ (나이아신아마이드 or 알파 알부틴 중 1개 선택하여 얇게)",
@@ -69,7 +69,7 @@ if st.session_state.menu_select == "💖 데일리 루틴":
                 "선크림 (자외선 차단 필수!)"
             ])
         with col2:
-            show_routine_box("🌙저녁", "장벽 회복 & 고진정", [
+            show_routine_box("저녁", "장벽 회복 & 고진정", [
                 "더랩 토너 (수분 여러 번 촵촵 💧)",
                 "매트릭실 + 알부틴 (또는 나이아신아마이드)",
                 "구달 아이크림: 눈가 전용 케어",
