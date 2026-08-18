@@ -1,269 +1,176 @@
 import streamlit as st
+import pandas as pd
+from streamlit_gsheets import GSheetsConnection
+import datetime
 
+# 1. 페이지 설정
+st.set_page_config(
+    page_title="봉이 & 꼬밍 맞춤 피부관리 🌸",
+    page_icon="✨",
+    layout="centered"
+)
 
-# 페이지 설정
-st.set_page_config(page_title="내 피부 깐달걀 프로젝트 🥚", page_icon="✨", layout="wide")
+# 2. 구글 시트 연결
+conn = st.connection("gsheets", type=GSheetsConnection)
 
+# 기존 저장된 데이터 불러오기
+try:
+    data = conn.read(worksheet="Sheet1", ttl="0s")
+except Exception:
+    data = pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
 
-# --- 2. 루틴 박스 디자인 함수 ---
-def show_routine_box(time, title, items):
-    if time == "아침":
-        st.success(f"**☀️ 아침: {title}**")
-    elif time == "저녁":
-        st.info(f"**🌙 저녁: {title}**")
-    elif time == "스페셜":
-        st.warning(f"**🌋 스페셜 케어: {title}**")
-    elif time == "SOS":
-        st.error(f"**🚨 SOS 긴급 케어: {title}**")
+st.title("🌸 봉이 & 꼬밍 생리주기 맞춤 스킨케어")
 
-    for item in items:
-        st.markdown(f"▪️ {item}")
+# 3. 생리주기별 관리법 및 손메모 루틴 반영 함수
+def get_skincare_info(day, cycle_length=28):
+    day = ((day - 1) % cycle_length) + 1
 
-# --- 3. 세션 상태 초기화 ---
-if 'menu_select' not in st.session_state:
-    st.session_state.menu_select = '💖 데일리 루틴'
-if 'special_page' not in st.session_state:
-    st.session_state.special_page = "💉 리들샷 300"
+    if 1 <= day <= 5:
+        phase_name = "🩸 생리 중 (Day 1~5)"
+        tag = "관리는 쉬고 진정/보습 집중 ☕"
+        status = "호르몬 수치가 낮아 피부가 매우 예민하고 건조합니다. 무리한 관리는 피하고 휴식을 취해주세요."
+        morning_routine = "💧 자극 없는 가벼운 물세안 & 순한 수분 보습"
+        night_routine = "🌿 진정 케어: 시카/세라마이드 위주의 진정·보습 크림만 가볍게 바르기"
+        checklist = [
+            "관리는 쉬어가기 (강한 각질제거/리들샷 금지)",
+            "진정 & 보습 제품 위주 사용",
+            "충분한 수면과 힐링"
+        ]
 
-# --- 4. 사이드바 ---
-with st.sidebar:
-    st.header("⚙️ 뷰티 설정")
+    elif 6 <= day <= 14:  # 약 9일간의 황금기
+        golden_day = day - 5
+        phase_name = f"✨ 황금기 (Day 6~14 / 황금기 {golden_day}일차)"
+        tag = "피부 컨디션 최상! 리들샷 & 영양 집중 케어 🌟"
+        status = "에스트로겐 활성으로 흡수력이 가장 좋은 시기입니다. 리들샷과 고기능성 세럼을 활용해보세요!"
+        morning_routine = "🧼 아침: 효소 파우더 클렌징 (리들샷 사용 후 주 1~2회 가볍게)"
+        night_routine = "🌙 저녁: [리들샷 + 매트릭실 + 보습 듬뿍] OR [디바이스 흡수 케어 + 보습팩] (중복 금지!)"
+        checklist = [
+            "효소 파우더로 가벼운 아침 클렌징",
+            "리들샷 사용 날은 중복 기능성 케어 피하기",
+            "디바이스 사용 시 3일 휴식 주기 지키기",
+            "보습제/마스크팩으로 충분한 수분 공급"
+        ]
+
+    elif 15 <= day <= 18:
+        phase_name = "🌕 배란기 (Day 15~18)"
+        tag = "모공 관리 & 자외선 차단 ☀️"
+        status = "피지 분비가 점차 늘어나는 시기입니다. 모공 관리와 선크림을 철저히 해주세요."
+        morning_routine = "☀️ 아침: 산뜻한 수분크림 + 자외선 차단제 꼼꼼히 바르기"
+        night_routine = "🧼 저녁: 모공 관리 (주 1~2회 클레이팩 또는 아크네 클렌징)"
+        checklist = [
+            "주 1~2회 클레이팩 / 아크네 클렌징으로 모공 케어",
+            "선크림 꼼꼼히 바르기 (기미/잡티 예방)",
+            "산뜻한 유수분 밸런스 유지"
+        ]
+
+    else:  # Day 19~28
+        phase_name = "🌧️ 생리 전 / 황체기 (Day 19~28)"
+        tag = "트러블 주의 & 수분 진정 💧"
+        status = "프로게스테론 영향으로 피지가 폭발하고 트러블이 올라오기 쉬운 시기입니다."
+        morning_routine = "💧 아침: 나이아신아마이드 세럼으로 트러블/피지 케어"
+        night_routine = "🌙 저녁: 모델링팩 + 매일 밤 수분크림 듬뿍 얹기"
+        checklist = [
+            "나이아신아마이드 세럼 사용",
+            "모델링팩으로 피부 열감 낮추기",
+            "매일 밤 수분크림 듬뿍 바르기",
+            "무거운 오일 제품 피하기"
+        ]
+
+    return day, phase_name, tag, status, morning_routine, night_routine, checklist
+
+# 4. 사용자 탭 화면 출력 함수
+def render_user_tab(user_name, user_key):
+    st.subheader(f"👤 {user_name}님의 생리일 설정")
+
+    # 구글 시트에서 해당 사용자의 가장 최근 생리일 가져오기
+    user_data = data[data["이름"] == user_name] if not data.empty else pd.DataFrame()
     
-    st.session_state.menu_select = st.radio(
-        "보고 싶은 화면을 골라줘!",
-        ["💖 데일리 루틴", "🚨 피부 상태별 SOS 케어"]
-    )
-    
-    st.divider()
+    default_date = datetime.date.today() - datetime.timedelta(days=7)
+    if not user_data.empty and "생리시작일" in user_data.columns:
+        try:
+            last_saved = user_data.iloc[-1]["생리시작일"]
+            default_date = datetime.datetime.strptime(str(last_saved), "%Y-%m-%d").date()
+        except:
+            pass
 
-    # 데일리 루틴 모드일 때 생리 여부 토글
-    period_status = False
-    if st.session_state.menu_select == "💖 데일리 루틴":
-        st.subheader("🩸 상태 토글")
-        period_status = st.toggle("지금 생리 중인가요?", value=False)
-        st.caption("토글을 켜면 자극 없는 생리 중 수분/휴식 루틴으로 전환돼요!")
+    # 입력 폼
+    with st.form(key=f"form_{user_key}"):
+        col1, col2 = st.columns(2)
+        with col1:
+            start_date = st.date_input("최근 생리 시작일", value=default_date, key=f"date_input_{user_key}")
+        with col2:
+            cycle_len = st.number_input("생리 주기(일)", min_value=20, max_value=40, value=28, key=f"cycle_input_{user_key}")
         
+        save_btn = st.form_submit_button("💾 날짜 구글 시트에 저장하기")
+
+        if save_btn:
+            new_row = pd.DataFrame([{
+                "이름": user_name,
+                "생리시작일": str(start_date),
+                "등록일시": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }])
+            updated_df = pd.concat([data, new_row], ignore_index=True)
+            conn.update(worksheet="Sheet1", data=updated_df)
+            st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 구글 시트에 저장되었습니다!")
+            st.rerun()
+
+    # 계산 로직
+    today = datetime.date.today()
+    days_passed = (today - start_date).days
     
+    if days_passed < 0:
+        st.error("⚠️ 시작일이 오늘보다 미래일 수 없습니다.")
+        return
 
-# --- 5. 메인 화면 출력 로직 ---
-
-# A. 데일리 루틴 화면 (생리 중 / 생리 아닐 때)
-if st.session_state.menu_select == "💖 데일리 루틴":
-    st.markdown("<h2 style='text-align: center;'>🥚 내 피부 깐달걀 프로젝트: 데일리 케어</h2>", unsafe_allow_html=True)
-    st.write("")
-
-
-    # 🩸 생리 중일 때
-    if period_status:
-        st.markdown("### 🩸 생리 중 루틴 (피부 휴식 & 무자극 수분 올인!)")
-        st.caption("🚨 피부 장벽이 가장 약하고 민감해진 시기! 고기능성 기기, 리들샷, 강한 각질제거제는 전부 멈추고 진정 케어에 집중하자.")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            show_routine_box("아침", "수분 방어 & 순한 탄력", [
-                "더랩 토너 (수분 여러 번 촵촵 💧)",
-                "매트릭실 (탄력 베이스 - 절대 문지르지 말고 톡톡 두드려 흡수! ✋)",
-                "+ (나이아신아마이드 or 알파 알부틴 중 1개 선택하여 얇게)",
-                "구달 아이크림 (다크서클 집중 케어 🍊)",
-                "에스트라 크림 (보습막 코팅)",
-                "선크림 (자외선 차단 필수!)"
-            ])
-        with col2:
-            show_routine_box("저녁", "장벽 회복 & 고진정", [
-                "더랩 토너 (수분 여러 번 촵촵 💧)",
-                "매트릭실 + 알부틴 (또는 나이아신아마이드)",
-                "구달 아이크림: 눈가 전용 케어",
-                "리버스크림에 보르피린 딱 1방울 섞어 팔자주름, 볼, 이마에만 흡수 (눈가 금지! 🛑)",
-                "라로슈포제 시카플라스트 밤 (장벽 진정 듬뿍 덮기)"
-            ])
-
-        st.write("")
-        st.warning("""
-        **⚠️ 생리 중 주의사항 & 추천 케어**
-        * **❌ 절대 금지:** 리들샷, 마데카 기기, 효소 파우더, 애크린겔(바하)
-        * **⭕ 추천 스페셜:** 순한 수분/진정 마스크팩(토리든 등) 올려놓고 푹 쉬어주기 🧘‍♀️
-        """)
-
-    #✨ 평상시 (생리 아닐 때) - 요일별 스페셜 모드
-    else:
-        st.markdown("### ✨ 평상시 루틴 (요일별 맞춤 스페셜 모드)")
-        st.caption("💡 **효소 파우더 사용법:** 주 1~2회, 저녁 세안 시 딥클렌징용으로 활용해 주세요!")
-
-        # 아침 공통 루틴
-        show_routine_box("아침", "공통 루틴 (데일리 탄력 & 속수분)", [
-            "약산성 세안 (유분이 많은 날은 비플레인 LHA 토너로 닦토 가능)",
-            "더랩 토너 ➔ 매트릭실 + 알파 알부틴 / 나이아신아마이드",
-            "구달 아이크림",
-            "동국제약 리버스크림",
-            "선크림 필수! ☀️",
-            "💡 **Tip.** 아침 화장이 잘 들뜨는 날엔 리버스크림 바른 뒤 초음파 디바이스 흡수 모드로 2~3분 퀵 케어하면 찰떡 밀착!"
-        ])
-
-        st.write("")
-        st.markdown("#### 🌙 저녁 요일별 스페셜 루틴")
-
-        # 요일별 탭 생성
-        tab_mon, tab_tue, tab_wed, tab_thu, tab_fri, tab_sat, tab_sun = st.tabs([
-            "월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"
-        ])
-
-        with tab_mon:
-            show_routine_box("저녁", "월요일: 리들샷 Day", [
-                "1. 세안 (필요 시 효소 파우더로 딥클렌징 🧼)",
-                "2. 맨얼굴에 **리들샷 300** 꾹꾹 눌러 흡수",
-                "3. 더랩 토너 ➔ 디오디너리 매트릭실 ➔ 나이아신 / 알파 알부틴",
-                "4. 구달 아이크림",
-                "5. 보르피린 1방울 + 동국제약 리버스크림 믹싱 (눈가 제외)",
-                "6. 라로슈포제 시카밤 B5 도톰하게 얹어 진정 마무리",
-                "🚨 **주의:** 리들샷 바른 날은 디바이스(기기) 사용 절대 금지!"
-            ])
-
-        with tab_tue:
-            show_routine_box("저녁", "화요일: 디바이스 흡수 & 속수분 Day 💆‍♀️", [
-                "1. 약산성 세안",
-                "2. 더랩 토너 ➔ 디오디너리 매트릭실 ➔ 나이아신 / 알파 알부틴",
-                "3. 리버스크림 평소보다 넉넉히 도포 🧴",
-                "4. **초음파 디바이스 흡수 모드** 가동하여 쏙쏙 밀착 흡수! ⚡",
-                "5. 구달 아이크림",
-                "6. 팔자 / 볼 / 이마 부위에만 보르피린 1방울 살짝 레이어링"
-            ])
-
-        with tab_wed:
-            show_routine_box("저녁", "수요일: 애크린겔 요철 케어 Day 🎯", [
-                "1. 세안 ➔ 더랩 토너 ➔ 디오디너리 매트릭실",
-                "2. 리버스크림 바른 후 **초음파 디바이스 흡수 모드**로 속수분 꽉 채우기!",
-                "3. 구달 아이크림",
-                "4. **애크린겔**: 스킨케어 최후 단계에서 오돌토돌한 요철/트러블 부위에만 콕콕 올리기!",
-                "🚨 **주의:** 애크린겔 바른 부위는 디바이스로 절대 문지르지 마세요!"
-            ])
-
-        with tab_thu:
-            show_routine_box("저녁", "목요일: 리들샷 Day 針", [
-                "1. 세안 (필요 시 효소 파우더로 딥클렌징 🧼)",
-                "2. 맨얼굴에 **리들샷 300** 꾹꾹 눌러 흡수",
-                "3. 더랩 토너 ➔ 디오디너리 매트릭실 ➔ 나이아신 / 알파 알부틴",
-                "4. 구달 아이크림",
-                "5. 보르피린 1방울 + 동국제약 리버스크림 믹싱 (눈가 제외)",
-                "6. 라로슈포제 시카밤 B5 도톰하게 얹어 진정 마무리",
-                "🚨 **주의:** 리들샷 바른 날은 디바이스(기기) 사용 절대 금지!"
-            ])
-
-        with tab_fri:
-            show_routine_box("저녁", "금요일: 마스크팩 & 초음파 스페셜 Day 💆‍♀️🎭", [
-                "1. 약산성 세안",
-                "2. 더랩 토너로 가볍게 피부 결 정돈 💧",
-                "3. 수분 / 미백 마스크팩 부착 🎭",
-                "4. **마스크팩 위에서 디바이스 초음파 모드** 가동하여 쏙쏙 밀착 흡수! ⚡",
-                "5. 10~15분 후 팩 떼어내고 잔여 에센스 톡톡 두드려 흡수",
-                "6. 동국제약 리버스크림으로 보습막 코팅 🧴",
-                "7. 구달 아이크림",
-                "8. 팔자 / 볼 / 이마 부위에만 보르피린 1방울 살짝 레이어링 ✨"
-            ])
-
-        with tab_sat:
-            show_routine_box("저녁", "토요일: 디바이스 흡수 & 속수분 Day 💆‍♀️", [
-                "1. 약산성 세안",
-                "2. 더랩 토너 ➔ 디오디너리 매트릭실 ➔ 나이아신 / 알파 알부틴",
-                "3. 동국제약 리버스크림 평소보다 넉넉히 도포 🧴",
-                "4. **초음파 디바이스 흡수 모드** 가동하여 쏙쏙 밀착 흡수! ⚡",
-                "5. 구달 아이크림",
-                "6. 팔자 / 볼 / 이마 부위에만 보르피린 1방울 살짝 레이어링"
-            ])
-
-        with tab_sun:
-            show_routine_box("저녁", "일요일: 애크린겔 요철 케어 Day 🎯", [
-                "1. 세안 ➔ 더랩 토너 ➔ 디오디너리 매트릭실",
-                "2. 동국제약 리버스크림 바른 후 **초음파 디바이스 흡수 모드**로 속수분 꽉 채우기!",
-                "3. 구달 아이크림",
-                "4. **애크린겔**: 스킨케어 최후 단계에서 오돌토돌한 요철/트러블 부위에만 콕콕 올리기!",
-                "🚨 **주의:** 애크린겔 바른 부위는 디바이스로 절대 문지르지 마세요!"
-            ])
-
-
-# B. 피부 상태별 SOS 케어
-elif st.session_state.menu_select == "🚨 피부 상태별 SOS 케어":
-    st.markdown("<h2 style='text-align: center;'>🚨 피부 고민별 맞춤 SOS 해결책</h2>", unsafe_allow_html=True)
-    st.caption("오늘 내 피부 상태에 따라 긴급 처방해 주는 맞춤 케어 모음집! ✨")
-    st.write("")
-
-    sos_tab1, sos_tab2, sos_tab3 = st.tabs([
-        "✨ 요철 & 모공 강조될 때",
-        "💧 건조하고 화장 뜰 때",
-        "🚨 트러블 / 붉은기 날 때"
-    ])
-
-    # 1. 요철 & 모공
-    with sos_tab1:
-        st.subheader("✨ 요철 & 모공 부각 SOS")
-        st.caption("피지 분비가 늘어나 나비존 모공이 넓어 보이고 오돌토돌 요철이 느껴질 때!")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            show_routine_box("SOS", "Option A. 애크린겔(바하) 국소 케어", [
-                "1. 순한 폼 클렌징으로 세안 (효소 세안 ❌)",
-                "2. 기초 수분 케어 마친 후 마른 상태",
-                "3. **애크린겔**: 요철/나비존 부위에만 쌀알만큼 톡톡! 🧫",
-                "5. 시카플라스트 밤으로 마무리"
-            ])
-        with col2:
-            show_routine_box("SOS", "Option B. 효소 & 녹두 클레이 모공 청소", [
-                "1. **수이사이 효소 파우더 워시**: 1분 내 살살 롤링 🧼",
-                "2. **녹두 클레이 모공팩**: 10~15분 도포 후 씻어내기 🌿",
-                "3. AHC 위치하젤 토너 (모공 수렴)",
-                "4. 히알루로닉 앰플 + 나이아신아마이드 (빈 모공 쫀쫀하게)",
-                "5. 에스트라 크림 (얇게 마무리)"
-            ])
-        st.info("💡 **핵심 포인트:** 애크린겔과 효소 파우더는 자극될 수 있으니 같은 날에 함께 쓰지 마세요!")
-
-    # 2. 건조 & 화장 뜸
-    with sos_tab2:
-        st.subheader("💧 건조 & 화장 뜸 SOS")
-        st.caption("속건조가 심하고 각질이 들뜨며 화장이 밀릴 때 수분을 차곡차곡 채우는 루틴!")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            show_routine_box("아침", "☀️ 화장 잘 먹는 수분 레이어링 (아침)", [
-                "1. 미온수 또는 아주 순한 폼 클렌징",
-                "2. **더랩 토너 3번 덧바르기** (스킨레이어링 💧)",
-                "3. **히알루로닉 앰플 + 매트릭실** (속건조 방어)",
-                "4. 에스트라 크림 **얇게 펴 바르고 꾹꾹 프레스**",
-                "5. 촉촉한 선크림 필수!"
-            ])
-        with col2:
-            show_routine_box("저녁", "🌙 속건조 철벽 보습 코팅 (저녁)", [
-                "1. 클렌징 후 더랩 토너로 수분 길 열기",
-                "2. **수분 마스크팩** (15분 올려두기 🎭)",
-                "3. 팩 떼어낸 후 **마데카 초음파 모드**로 흡수 극대화",
-                "4. **에스트라 크림 + 호호바 오일 1방울** 믹싱해서 보습막 코팅 ✨"
-            ])
-        st.info("💡 **핵심 포인트:** 화장이 뜬다고 무작정 각질을 밀어내면 장벽이 더 상해요! 수분 스킨 레이어링과 오일 코팅이 정답입니다.")
-
-    # 3. 트러블 & 붉은기
-    with sos_tab3:
-        st.subheader("🚨 트러블 & 붉은기 SOS")
-        st.caption("갑자기 붉은 뾰루지가 올라오거나 피부가 예민해졌을 때 자극 제로 진정 루틴!")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            show_routine_box("SOS", "☀️/🌙 무자극 트러블 진정 루틴", [
-                "1. **미온수 + 순한 폼 클렌징** (손힘 빼고 조심스럽게)",
-                "2. 더랩 토너 (문지르지 말고 손으로 톡톡 💧)",
-                "3. **트러블 스팟**: 애크린겔 아주 적은 양 콕콕 🧫",
-                "4. **히알루로닉 앰플** 수분 공급",
-                "5. **라로슈포제 시카플라스트 밤** 얇게 덮어 장벽 보호"
-            ])
-        with col2:
-            show_routine_box("SOS", "🚫 트러블 올 때 절대 금지 행동!", [
-                "❌ **리들샷 & 마데카 기기 절대 금지** (균 번짐 및 자극)",
-                "❌ 손으로 여드름 만지거나 무리하게 짜기",
-                "❌ 강한 각질제거제 / 비타민C 고함량 / 묵직한 오일류 사용",
-                "❌ 뜨거운 물 세안 및 긴 반신욕"
-            ])
-        st.info("💡 **핵심 포인트:** 트러블이 날 땐 여러 제품을 덧바르지 말고 최소한(토너-스팟-시카밤)으로 줄이는 게 빠른 진정의 지름길이에요!")
-
-
+    day_in_cycle, phase_name, tag, status, morning, night, checklist = get_skincare_info(days_passed + 1, cycle_len)
 
     st.divider()
-    if st.button("💖 데일리 루틴 보러 가기"):
-        st.session_state.menu_select = "💖 데일리 루틴"
-        st.rerun()
+    st.markdown(f"### 📅 오늘은 주기 **D+{day_in_cycle}일차**입니다!")
+    st.progress(min(day_in_cycle / cycle_len, 1.0))
+
+    # 주기별 스킨케어 카드
+    with st.container(border=True):
+        st.markdown(f"## {phase_name}")
+        st.markdown(f"**상태:** `{tag}`")
+        st.info(status)
+
+        st.markdown("---")
+        st.markdown(f"**☀️ {morning}**")
+        st.markdown(f"**🌙 {night}**")
+
+        st.markdown("---")
+        st.markdown("#### 📝 오늘의 체크리스트")
+        for i, item in enumerate(checklist):
+            st.checkbox(item, key=f"chk_{user_key}_{day_in_cycle}_{i}")
+
+    # 5. 🔥 황금기 전용 요일별 케어 체크박스 표 (중복 방지용)
+    if 6 <= day_in_cycle <= 14:
+        st.divider()
+        st.subheader("🗓️ 황금기 9일간 스킨케어 중복 방지 기록표")
+        st.caption("리들샷과 디바이스 케어가 중복되지 않도록 날짜별로 체크해두세요!")
+
+        # 9일간의 기록 테이블 생성
+        cols = st.columns(3)
+        days_label = ["1일차", "2일차", "3일차", "4일차", "5일차", "6일차", "7일차", "8일차", "9일차"]
+        
+        for idx, d_name in enumerate(days_label):
+            with cols[idx % 3]:
+                with st.container(border=True):
+                    st.markdown(f"**📍 황금기 {d_name}**")
+                    st.checkbox("💉 리들샷", key=f"rs_{user_key}_{idx}")
+                    st.checkbox("💆‍♀️ 디바이스", key=f"dv_{user_key}_{idx}")
+                    st.checkbox("🎭 마스크팩", key=f"mp_{user_key}_{idx}")
+
+    # 다음 생리 D-day
+    next_date = start_date + datetime.timedelta(days=cycle_len)
+    d_day = (next_date - today).days
+    st.caption(f"🔮 다음 생리 예정일: {next_date.strftime('%Y-%m-%d')} (D-{d_day})")
+
+# 6. 메인 탭 구제
+tab_bong, tab_kkoming = st.tabs(["🌸 봉이", "🎀 꼬밍"])
+
+with tab_bong:
+    render_user_tab("봉이", "bong")
+
+with tab_kkoming:
+    render_user_tab("꼬밍", "kkoming")
