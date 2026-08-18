@@ -16,12 +16,15 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 # 기존 저장된 데이터 불러오기
 try:
     data = conn.read(worksheet="Sheet1", ttl="0s")
+    # 빈 데이터프레임일 경우 컬럼 구조 강제 지정
+    if data.empty:
+        data = pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
 except Exception:
     data = pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
 
 st.title("🌸 봉이 & 꼬밍 생리주기 맞춤 스킨케어")
 
-# 3. 생리주기별 관리법 및 손메모 루틴 반영 함수
+# 3. 생리주기별 관리법 및 루틴 정의
 def get_skincare_info(day, cycle_length=28):
     day = ((day - 1) % cycle_length) + 1
 
@@ -83,14 +86,14 @@ def render_user_tab(user_name, user_key):
     st.subheader(f"👤 {user_name}님의 생리일 설정")
 
     # 구글 시트에서 해당 사용자의 가장 최근 생리일 가져오기
-    user_data = data[data["이름"] == user_name] if not data.empty else pd.DataFrame()
+    user_data = data[data["이름"] == user_name] if not data.empty and "이름" in data.columns else pd.DataFrame()
     
     default_date = datetime.date.today() - datetime.timedelta(days=7)
     if not user_data.empty and "생리시작일" in user_data.columns:
         try:
             last_saved = user_data.iloc[-1]["생리시작일"]
             default_date = datetime.datetime.strptime(str(last_saved), "%Y-%m-%d").date()
-        except:
+        except Exception:
             pass
 
     # 입력 폼
@@ -109,12 +112,15 @@ def render_user_tab(user_name, user_key):
                 "생리시작일": str(start_date),
                 "등록일시": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }])
+            
+            # 기존 데이터와 결합 후 write() 사용으로 안정적 업데이트
             updated_df = pd.concat([data, new_row], ignore_index=True)
-            conn.update(worksheet="Sheet1", data=updated_df)
-            st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 구글 시트에 저장되었습니다!")
+            conn.write(worksheet="Sheet1", data=updated_df)
+            
+            st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 구글 시트에 성공적으로 저장되었습니다!")
             st.rerun()
 
-    # 계산 로직
+    # 주기 계산 로직
     today = datetime.date.today()
     days_passed = (today - start_date).days
     
@@ -143,13 +149,12 @@ def render_user_tab(user_name, user_key):
         for i, item in enumerate(checklist):
             st.checkbox(item, key=f"chk_{user_key}_{day_in_cycle}_{i}")
 
-    # 5. 🔥 황금기 전용 요일별 케어 체크박스 표 (중복 방지용)
+    # 황금기 전용 기록표
     if 6 <= day_in_cycle <= 14:
         st.divider()
         st.subheader("🗓️ 황금기 9일간 스킨케어 중복 방지 기록표")
         st.caption("리들샷과 디바이스 케어가 중복되지 않도록 날짜별로 체크해두세요!")
 
-        # 9일간의 기록 테이블 생성
         cols = st.columns(3)
         days_label = ["1일차", "2일차", "3일차", "4일차", "5일차", "6일차", "7일차", "8일차", "9일차"]
         
@@ -166,7 +171,7 @@ def render_user_tab(user_name, user_key):
     d_day = (next_date - today).days
     st.caption(f"🔮 다음 생리 예정일: {next_date.strftime('%Y-%m-%d')} (D-{d_day})")
 
-# 6. 메인 탭 구제
+# 5. 메인 탭 구제
 tab_bong, tab_kkoming = st.tabs(["🌸 봉이", "🎀 꼬밍"])
 
 with tab_bong:
