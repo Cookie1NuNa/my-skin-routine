@@ -13,7 +13,7 @@ st.set_page_config(
 # 2. 구글 시트 연결
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# 데이터 안전하게 읽어오는 함수
+# 데이터 불러오기
 def load_data():
     try:
         df = conn.read(worksheet="Sheet1", ttl="0s")
@@ -109,19 +109,17 @@ def render_user_tab(user_name, user_key):
 
         if save_btn:
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            new_row_values = [user_name, str(start_date), now_str]
+            new_row = pd.DataFrame([{
+                "이름": user_name,
+                "생리시작일": str(start_date),
+                "등록일시": now_str
+            }])
             
             try:
-                # [connections.gsheets] 비밀키를 사용하는 표준 gspread 바인딩
-                client = conn.client
-                sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-                sh = client.open_by_url(sheet_url)
-                worksheet = sh.worksheet("Sheet1")
+                # 기존 데이터와 결합 후 공식 update 사용
+                updated_df = pd.concat([data, new_row], ignore_index=True)
+                conn.update(worksheet="Sheet1", data=updated_df)
                 
-                if len(worksheet.get_all_values()) == 0:
-                    worksheet.append_row(["이름", "생리시작일", "등록일시"])
-                
-                worksheet.append_row(new_row_values)
                 st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 성공적으로 저장되었습니다!")
                 st.rerun()
             except Exception as e:
