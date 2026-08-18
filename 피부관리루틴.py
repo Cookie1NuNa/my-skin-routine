@@ -13,14 +13,17 @@ st.set_page_config(
 # 2. 구글 시트 연결
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# 기존 저장된 데이터 불러오기
-try:
-    data = conn.read(worksheet="Sheet1", ttl="0s")
-    # 빈 데이터프레임일 경우 컬럼 구조 강제 지정
-    if data.empty:
-        data = pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
-except Exception:
-    data = pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
+# 기존 데이터 안전하게 가져오기
+def load_data():
+    try:
+        df = conn.read(worksheet="Sheet1", ttl="0s")
+        if df is None or df.empty:
+            return pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
+        return df
+    except Exception:
+        return pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
+
+data = load_data()
 
 st.title("🌸 봉이 & 꼬밍 생리주기 맞춤 스킨케어")
 
@@ -85,7 +88,7 @@ def get_skincare_info(day, cycle_length=28):
 def render_user_tab(user_name, user_key):
     st.subheader(f"👤 {user_name}님의 생리일 설정")
 
-    # 구글 시트에서 해당 사용자의 가장 최근 생리일 가져오기
+    # 최근 생리일 계산
     user_data = data[data["이름"] == user_name] if not data.empty and "이름" in data.columns else pd.DataFrame()
     
     default_date = datetime.date.today() - datetime.timedelta(days=7)
@@ -113,11 +116,13 @@ def render_user_tab(user_name, user_key):
                 "등록일시": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }])
             
-            # 기존 데이터와 결합 후 write() 사용으로 안정적 업데이트
+            # 구글 시트 데이터 결합 후 정상 업데이트
             updated_df = pd.concat([data, new_row], ignore_index=True)
-            conn.write(worksheet="Sheet1", data=updated_df)
             
-            st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 구글 시트에 성공적으로 저장되었습니다!")
+            # gsheets_connection 전용 표준 update 함수 호출
+            conn.update(worksheet="Sheet1", data=updated_df)
+            
+            st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 성공적으로 저장되었습니다!")
             st.rerun()
 
     # 주기 계산 로직
