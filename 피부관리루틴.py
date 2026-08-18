@@ -88,7 +88,6 @@ def get_skincare_info(day, cycle_length=28):
 def render_user_tab(user_name, user_key):
     st.subheader(f"👤 {user_name}님의 생리일 설정")
 
-    # 최근 생리일 조회
     user_data = data[data["이름"] == user_name] if not data.empty and "이름" in data.columns else pd.DataFrame()
     
     default_date = datetime.date.today() - datetime.timedelta(days=7)
@@ -99,7 +98,6 @@ def render_user_tab(user_name, user_key):
         except Exception:
             pass
 
-    # 입력 폼
     with st.form(key=f"form_{user_key}"):
         col1, col2 = st.columns(2)
         with col1:
@@ -114,13 +112,12 @@ def render_user_tab(user_name, user_key):
             new_row_values = [user_name, str(start_date), now_str]
             
             try:
-                # gspread의 client를 이용해 시트 하단에 한 줄 추가 (오류 방지)
+                # [connections.gsheets] 비밀키를 사용하는 표준 gspread 바인딩
                 client = conn.client
-                sheet_url = st.secrets["sheets"]["spreadsheet"]
+                sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
                 sh = client.open_by_url(sheet_url)
                 worksheet = sh.worksheet("Sheet1")
                 
-                # 시트가 아예 비어있으면 헤더 먼저 작성
                 if len(worksheet.get_all_values()) == 0:
                     worksheet.append_row(["이름", "생리시작일", "등록일시"])
                 
@@ -130,7 +127,6 @@ def render_user_tab(user_name, user_key):
             except Exception as e:
                 st.error(f"저장 중 오류가 발생했습니다: {e}")
 
-    # 주기 계산 로직
     today = datetime.date.today()
     days_passed = (today - start_date).days
     
@@ -144,7 +140,6 @@ def render_user_tab(user_name, user_key):
     st.markdown(f"### 📅 오늘은 주기 **D+{day_in_cycle}일차**입니다!")
     st.progress(min(day_in_cycle / cycle_len, 1.0))
 
-    # 주기별 스킨케어 카드
     with st.container(border=True):
         st.markdown(f"## {phase_name}")
         st.markdown(f"**상태:** `{tag}`")
@@ -159,7 +154,6 @@ def render_user_tab(user_name, user_key):
         for i, item in enumerate(checklist):
             st.checkbox(item, key=f"chk_{user_key}_{day_in_cycle}_{i}")
 
-    # 황금기 전용 기록표
     if 6 <= day_in_cycle <= 14:
         st.divider()
         st.subheader("🗓️ 황금기 9일간 스킨케어 중복 방지 기록표")
@@ -176,7 +170,6 @@ def render_user_tab(user_name, user_key):
                     st.checkbox("💆‍♀️ 디바이스", key=f"dv_{user_key}_{idx}")
                     st.checkbox("🎭 마스크팩", key=f"mp_{user_key}_{idx}")
 
-    # 다음 생리 D-day
     next_date = start_date + datetime.timedelta(days=cycle_len)
     d_day = (next_date - today).days
     st.caption(f"🔮 다음 생리 예정일: {next_date.strftime('%Y-%m-%d')} (D-{d_day})")
