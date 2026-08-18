@@ -3,7 +3,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 import datetime
 
-# 1. 페이지 설정
+# 1. 페이지 기본 설정
 st.set_page_config(
     page_title="봉이 & 꼬밍 맞춤 피부관리 🌸",
     page_icon="✨",
@@ -13,7 +13,7 @@ st.set_page_config(
 # 2. 구글 시트 연결
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# 기존 데이터 안전하게 가져오기
+# 데이터 안전하게 읽어오는 함수
 def load_data():
     try:
         df = conn.read(worksheet="Sheet1", ttl="0s")
@@ -88,7 +88,7 @@ def get_skincare_info(day, cycle_length=28):
 def render_user_tab(user_name, user_key):
     st.subheader(f"👤 {user_name}님의 생리일 설정")
 
-    # 최근 생리일 계산
+    # 최근 생리일 조회
     user_data = data[data["이름"] == user_name] if not data.empty and "이름" in data.columns else pd.DataFrame()
     
     default_date = datetime.date.today() - datetime.timedelta(days=7)
@@ -110,20 +110,25 @@ def render_user_tab(user_name, user_key):
         save_btn = st.form_submit_button("💾 날짜 구글 시트에 저장하기")
 
         if save_btn:
-            new_row = pd.DataFrame([{
-                "이름": user_name,
-                "생리시작일": str(start_date),
-                "등록일시": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }])
+            now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            new_row_values = [user_name, str(start_date), now_str]
             
-            # 구글 시트 데이터 결합 후 정상 업데이트
-            updated_df = pd.concat([data, new_row], ignore_index=True)
-            
-            # gsheets_connection 전용 표준 update 함수 호출
-            conn.update(worksheet="Sheet1", data=updated_df)
-            
-            st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 성공적으로 저장되었습니다!")
-            st.rerun()
+            try:
+                # gspread의 client를 이용해 시트 하단에 한 줄 추가 (오류 방지)
+                client = conn.client
+                sheet_url = st.secrets["sheets"]["spreadsheet"]
+                sh = client.open_by_url(sheet_url)
+                worksheet = sh.worksheet("Sheet1")
+                
+                # 시트가 아예 비어있으면 헤더 먼저 작성
+                if len(worksheet.get_all_values()) == 0:
+                    worksheet.append_row(["이름", "생리시작일", "등록일시"])
+                
+                worksheet.append_row(new_row_values)
+                st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 성공적으로 저장되었습니다!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"저장 중 오류가 발생했습니다: {e}")
 
     # 주기 계산 로직
     today = datetime.date.today()
