@@ -109,7 +109,7 @@ def render_user_tab(user_name, user_key):
         st.error("⚠️ 시작일이 오늘보다 미래일 수 없습니다.")
         return
 
-    day_in_cycle, phase_name, tag, status, morning, night, checklist = get_skincare_info(days_passed + 1, cycle_len)
+    day_in_cycle, phase_name, tag, status, morning, night= get_skincare_info(days_passed + 1, cycle_len)
 
     st.divider()
     st.markdown(f"### 📅 오늘은 주기 **D+{day_in_cycle}일차**입니다!")
@@ -125,10 +125,7 @@ def render_user_tab(user_name, user_key):
         st.markdown(f"**☀️ {morning}**")
         st.markdown(f"**🌙 {night}**")
 
-        st.markdown("---")
-        st.markdown("#### 📝 오늘의 체크리스트")
-        for i, item in enumerate(checklist):
-            st.checkbox(item, key=f"chk_{user_key}_{day_in_cycle}_{i}")
+
 
     # 5. 🔥 황금기 전용 요일별 케어 체크박스 표 (중복 방지용)
     if 6 <= day_in_cycle <= 14:
