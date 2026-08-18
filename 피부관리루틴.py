@@ -3,7 +3,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 import datetime
 
-# 1. 페이지 기본 설정
+# 1. 페이지 설정
 st.set_page_config(
     page_title="봉이 & 꼬밍 맞춤 피부관리 🌸",
     page_icon="✨",
@@ -13,21 +13,15 @@ st.set_page_config(
 # 2. 구글 시트 연결
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# 데이터 불러오기
-def load_data():
-    try:
-        df = conn.read(worksheet="Sheet1", ttl="0s")
-        if df is None or df.empty:
-            return pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
-        return df
-    except Exception:
-        return pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
+# 기존 저장된 데이터 불러오기
+try:
+    data = conn.read(worksheet="Sheet1", ttl="0s")
+except Exception:
+    data = pd.DataFrame(columns=["이름", "생리시작일", "등록일시"])
 
-data = load_data()
+st.title("🌸 생리주기 맞춤 스킨케어")
 
-st.title("🌸 봉이 & 꼬밍 생리주기 맞춤 스킨케어")
-
-# 3. 생리주기별 관리법 및 루틴 정의
+# 3. 생리주기별 관리법 및 손메모 루틴 반영 함수
 def get_skincare_info(day, cycle_length=28):
     day = ((day - 1) % cycle_length) + 1
 
@@ -36,26 +30,21 @@ def get_skincare_info(day, cycle_length=28):
         tag = "관리는 쉬고 진정/보습 집중 ☕"
         status = "호르몬 수치가 낮아 피부가 매우 예민하고 건조합니다. 무리한 관리는 피하고 휴식을 취해주세요."
         morning_routine = "💧 자극 없는 가벼운 물세안 & 순한 수분 보습"
-        night_routine = "🌿 진정 케어: 시카/세라마이드 위주의 진정·보습 크림만 가볍게 바르기"
-        checklist = [
-            "관리는 쉬어가기 (강한 각질제거/리들샷 금지)",
-            "진정 & 보습 제품 위주 사용",
-            "충분한 수면과 힐링"
-        ]
+        night_routine = """
+        🌿 진정 케어: 시카/세라마이드 위주의 진정·보습 크림만 가볍게 바르기 ➡️ (5분후)
+        🧴 멜라토닝크림(10월까지) 기미,잡티애 콕콕 찍어바르기 """
+
 
     elif 6 <= day <= 14:  # 약 9일간의 황금기
         golden_day = day - 5
         phase_name = f"✨ 황금기 (Day 6~14 / 황금기 {golden_day}일차)"
         tag = "피부 컨디션 최상! 리들샷 & 영양 집중 케어 🌟"
         status = "에스트로겐 활성으로 흡수력이 가장 좋은 시기입니다. 리들샷과 고기능성 세럼을 활용해보세요!"
-        morning_routine = "🧼 아침: 효소 파우더 클렌징 (리들샷 사용 후 주 1~2회 가볍게)"
-        night_routine = "🌙 저녁: [리들샷 + 매트릭실 + 보습 듬뿍] OR [디바이스 흡수 케어 + 보습팩] (중복 금지!)"
-        checklist = [
-            "효소 파우더로 가벼운 아침 클렌징",
-            "리들샷 사용 날은 중복 기능성 케어 피하기",
-            "디바이스 사용 시 3일 휴식 주기 지키기",
-            "보습제/마스크팩으로 충분한 수분 공급"
-        ]
+        morning_routine = "아침: 효소 파우더 클렌징 (리들샷 사용 후 주 1~2회 가볍게)"
+        night_routine = """저녁: [리들샷 + 매트릭실 + 보습 듬뿍] ➡️ [디바이스 흡수모드/초음파(주1) + 보습팩] (중복 금지!)
+        OR 보습크림 바른뒤 5분후
+        🧴 멜라토닝크림(10월까지) 기미,잡티애 콕콕 찍어바르기"""
+
 
     elif 15 <= day <= 18:
         phase_name = "🌕 배란기 (Day 15~18)"
@@ -71,16 +60,12 @@ def get_skincare_info(day, cycle_length=28):
 
     else:  # Day 19~28
         phase_name = "🌧️ 생리 전 / 황체기 (Day 19~28)"
-        tag = "트러블 주의 & 수분 진정 💧"
+        tag = "트러블 주의 & 모공관리 "
         status = "프로게스테론 영향으로 피지가 폭발하고 트러블이 올라오기 쉬운 시기입니다."
-        morning_routine = "💧 아침: 나이아신아마이드 세럼으로 트러블/피지 케어"
-        night_routine = "🌙 저녁: 모델링팩 + 매일 밤 수분크림 듬뿍 얹기"
-        checklist = [
-            "나이아신아마이드 세럼 사용",
-            "모델링팩으로 피부 열감 낮추기",
-            "매일 밤 수분크림 듬뿍 바르기",
-            "무거운 오일 제품 피하기"
-        ]
+        morning_routine = "💧 아침: 나이아신+ 알부틴 세럼으로 트러블/피지 케어"
+        night_routine = """🌙 저녁: 매트릭실+ 디바이스 흡수모드 ➡️ (5분후) 멜라토닝크림(10월까지) 기미,잡티애 콕콕 찍어바르기
+        🍑 클레이팩(전체orT존,나비존) 8분(촉촉할때 닦아내기) ➡️ 물기닦고 애크린겔 ➡️세럽/보습(듬뿍)"""
+
 
     return day, phase_name, tag, status, morning_routine, night_routine, checklist
 
@@ -88,16 +73,18 @@ def get_skincare_info(day, cycle_length=28):
 def render_user_tab(user_name, user_key):
     st.subheader(f"👤 {user_name}님의 생리일 설정")
 
-    user_data = data[data["이름"] == user_name] if not data.empty and "이름" in data.columns else pd.DataFrame()
+    # 구글 시트에서 해당 사용자의 가장 최근 생리일 가져오기
+    user_data = data[data["이름"] == user_name] if not data.empty else pd.DataFrame()
     
     default_date = datetime.date.today() - datetime.timedelta(days=7)
     if not user_data.empty and "생리시작일" in user_data.columns:
         try:
             last_saved = user_data.iloc[-1]["생리시작일"]
             default_date = datetime.datetime.strptime(str(last_saved), "%Y-%m-%d").date()
-        except Exception:
+        except:
             pass
 
+    # 입력 폼
     with st.form(key=f"form_{user_key}"):
         col1, col2 = st.columns(2)
         with col1:
@@ -108,23 +95,17 @@ def render_user_tab(user_name, user_key):
         save_btn = st.form_submit_button("💾 날짜 구글 시트에 저장하기")
 
         if save_btn:
-            now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             new_row = pd.DataFrame([{
                 "이름": user_name,
                 "생리시작일": str(start_date),
-                "등록일시": now_str
+                "등록일시": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }])
-            
-            try:
-                # 기존 데이터와 결합 후 공식 update 사용
-                updated_df = pd.concat([data, new_row], ignore_index=True)
-                conn.update(worksheet="Sheet1", data=updated_df)
-                
-                st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 성공적으로 저장되었습니다!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"저장 중 오류가 발생했습니다: {e}")
+            updated_df = pd.concat([data, new_row], ignore_index=True)
+            conn.update(worksheet="Sheet1", data=updated_df)
+            st.success(f"🎉 {user_name}님의 생리 시작일({start_date})이 구글 시트에 저장되었습니다!")
+            st.rerun()
 
+    # 계산 로직
     today = datetime.date.today()
     days_passed = (today - start_date).days
     
@@ -138,6 +119,7 @@ def render_user_tab(user_name, user_key):
     st.markdown(f"### 📅 오늘은 주기 **D+{day_in_cycle}일차**입니다!")
     st.progress(min(day_in_cycle / cycle_len, 1.0))
 
+    # 주기별 스킨케어 카드
     with st.container(border=True):
         st.markdown(f"## {phase_name}")
         st.markdown(f"**상태:** `{tag}`")
@@ -152,11 +134,13 @@ def render_user_tab(user_name, user_key):
         for i, item in enumerate(checklist):
             st.checkbox(item, key=f"chk_{user_key}_{day_in_cycle}_{i}")
 
+    # 5. 🔥 황금기 전용 요일별 케어 체크박스 표 (중복 방지용)
     if 6 <= day_in_cycle <= 14:
         st.divider()
         st.subheader("🗓️ 황금기 9일간 스킨케어 중복 방지 기록표")
         st.caption("리들샷과 디바이스 케어가 중복되지 않도록 날짜별로 체크해두세요!")
 
+        # 9일간의 기록 테이블 생성
         cols = st.columns(3)
         days_label = ["1일차", "2일차", "3일차", "4일차", "5일차", "6일차", "7일차", "8일차", "9일차"]
         
@@ -164,15 +148,36 @@ def render_user_tab(user_name, user_key):
             with cols[idx % 3]:
                 with st.container(border=True):
                     st.markdown(f"**📍 황금기 {d_name}**")
+                    st.checkbox("🫧 효소파우더", key=f"rs_{user_key}_{idx}")
                     st.checkbox("💉 리들샷", key=f"rs_{user_key}_{idx}")
                     st.checkbox("💆‍♀️ 디바이스", key=f"dv_{user_key}_{idx}")
                     st.checkbox("🎭 마스크팩", key=f"mp_{user_key}_{idx}")
+                    
+    if 19 <= day_in_cycle <= 28:
+        st.divider()
+        st.subheader("🗓️ 황제기 9일간 모공케어 중복 방지 기록표")
+        st.caption("주1~2회 권장")
 
+        # 9일간의 기록 테이블 생성
+        cols = st.columns(3)
+        days_label = ["1일차", "2일차", "3일차", "4일차", "5일차", "6일차", "7일차", "8일차", "9일차"]
+        
+        for idx, d_name in enumerate(days_label):
+            with cols[idx % 3]:
+                with st.container(border=True):
+                    st.markdown(f"**📍 황제기 {d_name}**")
+                    st.checkbox("🫛 클레이팩", key=f"rs_{user_key}_{idx}")
+                    st.checkbox("🧴 애크린겔", key=f"rs_{user_key}_{idx}")
+                    st.checkbox("💆‍♀️ 디바이스", key=f"dv_{user_key}_{idx}")
+                    st.checkbox("🎭 마스크팩", key=f"mp_{user_key}_{idx}")
+
+
+    # 다음 생리 D-day
     next_date = start_date + datetime.timedelta(days=cycle_len)
     d_day = (next_date - today).days
     st.caption(f"🔮 다음 생리 예정일: {next_date.strftime('%Y-%m-%d')} (D-{d_day})")
 
-# 5. 메인 탭 구제
+# 6. 메인 탭 구제
 tab_bong, tab_kkoming = st.tabs(["🌸 봉이", "🎀 꼬밍"])
 
 with tab_bong:
