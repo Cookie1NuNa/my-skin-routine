@@ -24,6 +24,7 @@ st.title("🌸 생리주기 맞춤 스킨케어")
 # 3. 생리주기별 관리법 및 손메모 루틴 반영 함수
 def get_skincare_info(day, cycle_length=28):
     day = ((day - 1) % cycle_length) + 1
+    checklist = [] # 💡 에러 방지: 기본 빈 체크리스트를 상단에 추가
 
     if 1 <= day <= 5:
         phase_name = "🩸 생리 중 (Day 1~5)"
@@ -65,7 +66,6 @@ def get_skincare_info(day, cycle_length=28):
         morning_routine = "💧 아침: 나이아신+ 알부틴 세럼으로 트러블/피지 케어"
         night_routine = """🌙 저녁: 매트릭실+ 디바이스 흡수모드 ➡️ (5분후) 멜라토닝크림(10월까지) 기미,잡티애 콕콕 찍어바르기
         🍑 클레이팩(전체orT존,나비존) 8분(촉촉할때 닦아내기) ➡️ 물기닦고 애크린겔 ➡️세럽/보습(듬뿍)"""
-
 
     return day, phase_name, tag, status, morning_routine, night_routine, checklist
 
@@ -129,10 +129,12 @@ def render_user_tab(user_name, user_key):
         st.markdown(f"**☀️ {morning}**")
         st.markdown(f"**🌙 {night}**")
 
-        st.markdown("---")
-        st.markdown("#### 📝 오늘의 체크리스트")
-        for i, item in enumerate(checklist):
-            st.checkbox(item, key=f"chk_{user_key}_{day_in_cycle}_{i}")
+        # 💡 에러 방지: 체크리스트 내용이 있을 때만 그리도록 수정
+        if checklist: 
+            st.markdown("---")
+            st.markdown("#### 📝 오늘의 체크리스트")
+            for i, item in enumerate(checklist):
+                st.checkbox(item, key=f"chk_{user_key}_{day_in_cycle}_{i}")
 
     # 5. 🔥 황금기 전용 요일별 케어 체크박스 표 (중복 방지용)
     if 6 <= day_in_cycle <= 14:
@@ -148,14 +150,15 @@ def render_user_tab(user_name, user_key):
             with cols[idx % 3]:
                 with st.container(border=True):
                     st.markdown(f"**📍 황금기 {d_name}**")
-                    st.checkbox("🫧 효소파우더", key=f"rs_{user_key}_{idx}")
+                    # 💡 에러 방지: key 값이 중복되지 않도록 전부 다르게 수정
+                    st.checkbox("🫧 효소파우더", key=f"ep_{user_key}_{idx}")
                     st.checkbox("💉 리들샷", key=f"rs_{user_key}_{idx}")
                     st.checkbox("💆‍♀️ 디바이스", key=f"dv_{user_key}_{idx}")
                     st.checkbox("🎭 마스크팩", key=f"mp_{user_key}_{idx}")
                     
     if 19 <= day_in_cycle <= 28:
         st.divider()
-        st.subheader("🗓️ 황제기 9일간 모공케어 중복 방지 기록표")
+        st.subheader("🗓️ 황체기 9일간 모공케어 중복 방지 기록표")
         st.caption("주1~2회 권장")
 
         # 9일간의 기록 테이블 생성
@@ -165,19 +168,19 @@ def render_user_tab(user_name, user_key):
         for idx, d_name in enumerate(days_label):
             with cols[idx % 3]:
                 with st.container(border=True):
-                    st.markdown(f"**📍 황제기 {d_name}**")
-                    st.checkbox("🫛 클레이팩", key=f"rs_{user_key}_{idx}")
-                    st.checkbox("🧴 애크린겔", key=f"rs_{user_key}_{idx}")
-                    st.checkbox("💆‍♀️ 디바이스", key=f"dv_{user_key}_{idx}")
-                    st.checkbox("🎭 마스크팩", key=f"mp_{user_key}_{idx}")
-
+                    st.markdown(f"**📍 황체기 {d_name}**")
+                    # 💡 에러 방지: key 값이 중복되지 않도록 전부 다르게 수정
+                    st.checkbox("🫛 클레이팩", key=f"cp_{user_key}_{idx}")
+                    st.checkbox("🧴 애크린겔", key=f"ag_{user_key}_{idx}")
+                    st.checkbox("💆‍♀️ 디바이스", key=f"dv2_{user_key}_{idx}")
+                    st.checkbox("🎭 마스크팩", key=f"mp2_{user_key}_{idx}")
 
     # 다음 생리 D-day
     next_date = start_date + datetime.timedelta(days=cycle_len)
     d_day = (next_date - today).days
     st.caption(f"🔮 다음 생리 예정일: {next_date.strftime('%Y-%m-%d')} (D-{d_day})")
 
-# 6. 메인 탭 구제
+# 6. 메인 탭 구성
 tab_bong, tab_kkoming = st.tabs(["🌸 봉이", "🎀 꼬밍"])
 
 with tab_bong:
